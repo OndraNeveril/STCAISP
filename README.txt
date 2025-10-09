@@ -1,7 +1,7 @@
 Šifrovací pomůcky
 Cipher decoder
 
-Tagy: Šifry; Python; Strojové učení; Překlad textu
+Tagy: Šifry; Python; Strojové učení; Rozpoznávání obrazu; Překlad textu
 
 Odkaz na repositář (pokud není, nech prázdné):
 Odkaz na výsledek (pokud není, nech prázdné):
@@ -20,3 +20,6 @@ Soubory:
   - fonty - obsahují skautské fonty,  které se používají k zašifrování textů, jedná se o 10 vybraných fontů, tak, aby byl překlad jednoznačný. Vyvužívají se pouze v programu dataset.py (více v sekci o něm).
   - dataset - složka obsahuje dvojici zašifrované a originální zprávy (soubory zadání.png a řešení.txt), vygenerované pomocí programu dataset.py, určené k natrénování a testování modelu na řešení šifer.
   - dataset.py - program, určený k vytváření datasetů, generuje náhodné anglický text o rozsahu několika krátkých vět, které následně překládá do všech vybraných fontů. Vzhledem k tomu, že dataset lze vytvořit pomocí tohoto progarmu a jednotlivých fontů, není součástí repozitáře.
+  - reseni.py - "knihovna" obsahující mnou definované funkce používané k rozpoznání a vyřešení šifry
+  - decoder.py - Zdrojový kód aplikace, definuje GUI a používá funkce z reseni.py
+  - decoder.exe - Samotná aplikace, uživatel načte obrázek a nechá si vyřešit šifru
