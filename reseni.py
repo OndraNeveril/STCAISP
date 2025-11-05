@@ -8,7 +8,7 @@ import time
 import math
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader, random_split
-from PIL import Image
+from PIL import Image, ImageTk
 import os
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -64,8 +64,8 @@ class CustomDataset(Dataset):
 
 def trenovani_vlastni_dataset():
     # --- Načtení datasetu ---
-    train_dataset = CustomDataset("dataset/train")
-    test_dataset  = CustomDataset("dataset/test")
+    train_dataset = CustomDataset("Dataset/train")
+    test_dataset  = CustomDataset("Dataset/test")
 
     print(f"Train size: {len(train_dataset)}, Test size: {len(test_dataset)}, Classes: {train_dataset.classes}")
 
@@ -144,23 +144,79 @@ def trenovani_vlastni_dataset():
             best_test_acc = avg_test_acc
             torch.save(model.state_dict(), "best_model.pth")
 
+def rozpoznat(t, img):
+    """Rozpoznání obrázku na základě uloženého natrénovaného modelu.
+    Parametry:
+        t   : Tkinter widget (Label) pro zobrazení výsledku
+        img : PIL.Image objekt (načtený obrázek)
+    """
 
-trenovani_vlastni_dataset()
-input()
+    # Nastavení
+    num_classes = 10
+    classes = ["A01", "AZ", "BinarniCtverce", "BrailovoPismo", "Mobil", "Morse", "PosunkovaAbeceda", "Semafor", "VelkyPolskyKriz", "Zlomky"]
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-def rozpoznat(t):
-    t.config(text = "Šifra rozpoznána")
+    # Definice stejného modelu
+    model = nn.Sequential(
+        nn.Conv2d(1, 16, 3, padding=1),
+        nn.BatchNorm2d(16),
+        nn.ReLU(),
+        nn.MaxPool2d(2),
+        nn.Conv2d(16, 32, 3, padding=1),
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
+        nn.MaxPool2d(2),
+        nn.AdaptiveAvgPool2d((8, 8)),
+        nn.Flatten(),
+        nn.Linear(32 * 8 * 8, 128),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(128, num_classes)
+    ).to(device)
+
+    # Načtení uloženého modelu
+    try:
+        num_classes = 10
+        classes = ["A01", "AZ", "BinarniCtverce", "BrailovoPismo", "Mobil", "Morse", "PosunkovaAbeceda", "Semafor", "VelkyPolskyKriz", "Zlomky"]
+
+        model.load_state_dict(torch.load("best_model.pth", map_location=device))
+    except FileNotFoundError:
+        t.config(text="Model nebyl nalezen. Natrénujte ho nejprve.")
+        return
+
+    model.eval()
+
+    # Transformace obrázku
+    transform = transforms.Compose([
+        transforms.Grayscale(),
+        transforms.Resize((128, 512)),
+        transforms.ToTensor()
+    ])
+
+    img_tensor = transform(img).unsqueeze(0).to(device)  # přidání batch dimenze
+
+    # Predikce
+    with torch.inference_mode():
+        y_pred = model(img_tensor)
+        pred_class = torch.argmax(y_pred, dim=1).item()
+        pred_label = classes[pred_class]
+
+    # Aktualizace widgetu
+    t.config(text=f"Šifra rozpoznána: {pred_label}")
+
 
 def vyresit(t):
     t.config(text = "Šifra vyřešena")
 
-def vstup(input_file, root):
-    """Vybere vstupní soubor a zobrazí ho"""
-    if input_file == None:
-        input_file = askopenfilename()
-        img = Image.open(input_file)
-        display = ImageTk.PhotoImage(img)
-        label = Label(root, image=display, bg="white")
-        label.image = display
-        label.pack()
-        return input_file
+def vstup():
+    """Vybere vstupní soubor a vrátí PIL.Image objekt"""
+    file_path = askopenfilename()
+    if file_path:
+        img = Image.open(file_path)
+        return img
+    return None
+
+if __name__ == "__main__":
+    # Spustí se jen při přímém spuštění reseni.py
+    print("Spuštěno přímo. Spouštím trénování modelu...")
+    trenovani_vlastni_dataset()

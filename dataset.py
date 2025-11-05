@@ -48,7 +48,7 @@ for font_file in font_list:
     os.makedirs(test_class_dir)
 
     for j in range(samples_per_class):
-        text = random_paragraph(5, 1, 2)
+        text = random_paragraph(5, 1, 1)
         img_name = f"{n}_{j}.png"
         if j < samples_per_class * train_fraction:
             save_image(text, font_path, 20, os.path.join(train_class_dir, img_name))
