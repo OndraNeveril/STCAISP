@@ -6,7 +6,7 @@ import shutil
 
 words = list(get_english_words_set(['web2']))
 
-def random_sentence(word_count=10):
+def random_sentence(word_count=2):
     selected = random.choices(words, k=word_count)
     sentence = " ".join(selected)
     return sentence.capitalize() + "."
@@ -16,7 +16,7 @@ def random_paragraph(sentence_count, min_words, max_words):
         random_sentence(random.randint(min_words, max_words))
         for _ in range(sentence_count))
 
-fonts_path = "C:\\Users\\ondra\\dokument\\STCAIŠP\\fonty"
+fonts_path = "/media/ondrej/f33d1d42-ade5-41fb-98df-bd6fefb6cf63/STCAIŠP/fonty"
 font_list = os.listdir(fonts_path)
 
 base_dir = "Dataset"
@@ -30,7 +30,7 @@ os.makedirs(test_dir)
 
 def save_image(text, font_path, font_size, save_path):
     font = ImageFont.truetype(font_path, font_size)
-    img = Image.new("RGB", (1500, 300), color="white")
+    img = Image.new("RGB", (500, 300), color="white")
     draw = ImageDraw.Draw(img)
     draw.text((20, 60), text, font=font, fill="black")
     img.save(save_path)
@@ -48,7 +48,7 @@ for font_file in font_list:
     os.makedirs(test_class_dir)
 
     for j in range(samples_per_class):
-        text = random_paragraph(5, 3, 5)
+        text = random_paragraph(5, 1, 2)
         img_name = f"{n}_{j}.png"
         if j < samples_per_class * train_fraction:
             save_image(text, font_path, 20, os.path.join(train_class_dir, img_name))
