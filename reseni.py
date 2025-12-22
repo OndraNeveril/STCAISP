@@ -205,8 +205,68 @@ def rozpoznat(t, img):
     t.config(text=f"Šifra rozpoznána: {pred_label}")
 
 
-def vyresit(t):
-    t.config(text = "Šifra vyřešena")
+
+
+
+
+
+def extrahovat_znaky(img, sifra_typ):
+    typ = sifra_typ.lower()
+
+    if typ in ["brailovopismo", "binarnictverce", "semafor", "posunkovaabeceda"]:
+        znak_sirka = 40
+        mezera_sirka = 2
+    elif typ == "morse":
+        znak_sirka = 30
+        mezera_sirka = 1
+    else:
+        znak_sirka = 20
+        mezera_sirka = 1
+
+    img_gray = img.convert("L")
+    img_bw = img_gray.point(lambda x: 0 if x < 128 else 255, "1")
+    width, height = img_bw.size
+
+    znaky = []
+    x = 0
+    while x < width:
+        col = [img_bw.getpixel((x, y)) for y in range(height)]
+        if all(pix == 255 for pix in col):
+            x += 1
+            continue
+        end_x = x + znak_sirka
+        if end_x > width:
+            end_x = width
+
+        znak_img = img_bw.crop((x, 0, end_x, height))
+        znaky.append(znak_img)
+        x = end_x + mezera_sirka
+    return znaky
+
+
+def vyresit(t, img=None, rozpoznano_label=None):
+    if img is None:
+        t.config(text="Nezvolen žádný obrázek")
+        return
+
+    if rozpoznano_label is None or "Šifra rozpoznána:" not in rozpoznano_label.cget("text"):
+        t.config(text="Šifra nebyla ještě rozpoznána. Nejprve klikněte na 'Rozpoznat šifru'")
+        return
+
+    sifra_typ = rozpoznano_label.cget("text").replace("Šifra rozpoznána: ", "")
+
+    sifra_znaky = extrahovat_znaky(img, sifra_typ)
+
+    # 4. Dekódování šifry
+    vysledek_text = None
+    # TODO: zavolat odpovídající dekodér podle sifra_typ
+    # např. pokud sifra_typ == "Morse": vysledek_text = dekoder_morse(sifra_znaky)
+
+    if vysledek_text is not None:
+        t.config(text=f"Šifra vyřešena:\n{vysledek_text}")
+    else:
+        t.config(text="Dekódování šifry není implementováno")
+
 
 def vstup():
     """Vybere vstupní soubor a vrátí PIL.Image objekt"""

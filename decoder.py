@@ -102,8 +102,7 @@ Button(frame_decode, text="Rozpoznat šifru", font=("Font", 20), height=1, width
 # Vyřešení šifry
 t2 = Label(frame_decode, text="Šifra nevyřešena", background="white", font=("Font", 20))
 t2.pack()
-Button(frame_decode, text="Vyřešit šifru", font=("Font", 20), height=1, width=20, command=lambda: reseni.vyresit(t2)).pack(pady=20)
-
+Button(frame_decode, text="Vyřešit šifru", font=("Font", 20), height=1, width=20, command=lambda: reseni.vyresit(t2, img=img, rozpoznano_label=t1)).pack(pady=20)
 Button(frame_decode, text="Zpět na původní obrazovku", font=("Font", 20), command=lambda: show_frame(frame_start)).pack(pady=20)
 
 
