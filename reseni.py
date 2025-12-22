@@ -94,7 +94,7 @@ def trenovani_vlastni_dataset():
 
     print(model)
 
-    optimizer = optim.AdamW(model.parameters(), lr=5e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=3e-4)
     loss_fn = nn.CrossEntropyLoss()
 
     n_epochs = 20
