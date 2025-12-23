@@ -42,10 +42,7 @@ def vyber_soubor():
 
 def spaced_text(text, font_name):
     font_lower = font_name.lower()
-    if "brail" in font_lower or "binar" in font_lower:
-        sep = "  "
-    else:
-        sep = " "
+    sep = "  "
     output = ""
     for ch in text:
         if ch == " ":
@@ -54,9 +51,9 @@ def spaced_text(text, font_name):
             output += ch + sep
     return output.rstrip()
 
-#Zašifrování textu
+# --- Zašifrování textu ---
 def Take_input(font):
-    if font == None:
+    if font is None:
         t3.config(text="Šifra nevybrána!", background="white", font=("Font", 20), fg="red")
         t3.pack(pady=30)
     else:
@@ -70,11 +67,17 @@ def Take_input(font):
             font_size = 20
         text = spaced_text(raw_text, font)
         font_obj = ImageFont.truetype(f"fonty/{font}", font_size)
-        img = Image.new("RGB", (500, 300), color="white")
+        img_width, img_height = 500, 50
+        img = Image.new("RGB", (img_width, img_height), color="white")
         draw = ImageDraw.Draw(img)
-        draw.text((20, 60), text, font=font_obj, fill="black")
+        bbox = font_obj.getbbox(text)  # vrací (x0, y0, x1, y1)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        y = (img_height - text_height) // 2
+        draw.text((0, y), text, font=font_obj, fill="black")
         img.save("output/sifra.png")
-        t3.config(text="Šifra zašifrována,\nsoubor uložen do složky output", background="white", font=("Font", 20), fg="green")
+        t3.config(text="Šifra zašifrována,\nsoubor uložen do složky output", background="white", font=("Font", 20),
+                  fg="green")
         t3.pack(pady=30)
         inputtxt.delete("1.0", "end")
         vyber.set("Vyber druh šifry")

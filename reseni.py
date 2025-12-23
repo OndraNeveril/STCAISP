@@ -1,18 +1,23 @@
-from tkinter import Label
-from tkinter.filedialog import askopenfilename
+import os
+import time
+import math
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import time
-import math
-from torchvision import datasets, transforms
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+from tkinter import Label
+from tkinter.filedialog import askopenfilename
 from PIL import Image, ImageTk
-import os
+
+# ────────────── KONSTANTY ──────────────
+LETTER_SIZE = (80, 50)   # (W, H) – PIL
+TORCH_SIZE  = (50, 80)   # (H, W) – torchvision
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
- 	
+
+# ────────────── UTIL ──────────────
 def timeSince(since):
     now = time.time()
     s = now - since
@@ -23,33 +28,29 @@ def timeSince(since):
 def accuracy_fn(y_true, y_pred):
     y_pred_class = torch.argmax(y_pred, dim=1)
     correct = torch.eq(y_true, y_pred_class).sum().item()
-    acc = (correct / len(y_pred)) * 100
-    return acc
+    return (correct / len(y_pred)) * 100
 
+# ────────────── DATASET ──────────────
 class CustomDataset(Dataset):
-    def __init__(self, root_folder):
+    def __init__(self, root_folder, img_size=TORCH_SIZE):
         self.images = []
         self.labels = []
         self.classes = []
 
-        # projdi všechny složky uvnitř root_folder
         for class_name in sorted(os.listdir(root_folder)):
             class_path = os.path.join(root_folder, class_name)
             if not os.path.isdir(class_path):
                 continue
             self.classes.append(class_name)
-            # projdi všechny soubory v této složce
-            for root, _, files in os.walk(class_path):  # <-- rekurzivně
+            for root, _, files in os.walk(class_path):
                 for file in files:
                     if file.endswith(".png"):
                         self.images.append(os.path.join(root, file))
                         self.labels.append(self.classes.index(class_name))
 
-        print(f"Načteno {len(self.images)} obrázků, třídy: {self.classes}")
-
         self.transform = transforms.Compose([
             transforms.Grayscale(),
-            transforms.Resize((128, 512)),
+            transforms.Resize(img_size),
             transforms.ToTensor()
         ])
 
@@ -59,23 +60,11 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.images[idx])
         img = self.transform(img)
-        label = self.labels[idx]
-        return img, label
+        return img, self.labels[idx]
 
-def trenovani_vlastni_dataset():
-    # --- Načtení datasetu ---
-    train_dataset = CustomDataset("Dataset/train")
-    test_dataset  = CustomDataset("Dataset/test")
-
-    print(f"Train size: {len(train_dataset)}, Test size: {len(test_dataset)}, Classes: {train_dataset.classes}")
-
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    test_loader  = DataLoader(test_dataset, batch_size=16, shuffle=False)
-
-    num_classes = len(train_dataset.classes)
-
-    # --- Model ---
-    model = nn.Sequential(
+# ────────────── MODEL ──────────────
+def create_model(num_classes):
+    return nn.Sequential(
         nn.Conv2d(1, 16, 3, padding=1),
         nn.BatchNorm2d(16),
         nn.ReLU(),
@@ -88,39 +77,42 @@ def trenovani_vlastni_dataset():
         nn.Flatten(),
         nn.Linear(32 * 8 * 8, 128),
         nn.ReLU(),
-        nn.Dropout(0.3),
+        nn.Dropout(0.1),
         nn.Linear(128, num_classes)
     ).to(device)
 
-    print(model)
+def train_model(train_dataset, test_dataset, save_path, n_epochs=20, batch_size=16, learning_rate=3e-4):
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    optimizer = optim.AdamW(model.parameters(), lr=3e-4)
+    num_classes = len(train_dataset.classes)
+    model = create_model(num_classes)
+
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     loss_fn = nn.CrossEntropyLoss()
 
-    n_epochs = 20
-    start_time = time.time()
     best_test_acc = 0
+    start_time = time.time()
 
     for epoch in range(n_epochs):
-        # --- Training ---
         model.train()
-        train_losses = []
-        train_accs = []
+        train_losses, train_accs = [], []
+
         for Xbatch, ybatch in train_loader:
             Xbatch, ybatch = Xbatch.to(device), ybatch.to(device)
             y_pred = model(Xbatch)
             loss = loss_fn(y_pred, ybatch)
             acc = accuracy_fn(ybatch, y_pred)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
             train_losses.append(loss.item())
             train_accs.append(acc)
 
-        # --- Evaluation ---
         model.eval()
-        test_losses = []
-        test_accs = []
+        test_losses, test_accs = [], []
         with torch.inference_mode():
             for Xtest, ytest in test_loader:
                 Xtest, ytest = Xtest.to(device), ytest.to(device)
@@ -135,98 +127,154 @@ def trenovani_vlastni_dataset():
         avg_test_loss  = np.mean(test_losses)
         avg_test_acc   = np.mean(test_accs)
 
-        print(f"{timeSince(start_time)} | Epoch: {epoch+1}/{n_epochs} | "
-              f"Train loss: {avg_train_loss:.5f}, acc: {avg_train_acc:.2f}% | "
-              f"Test loss: {avg_test_loss:.5f}, acc: {avg_test_acc:.2f}%")
+        print(
+            f"{timeSince(start_time)} | Epoch {epoch+1}/{n_epochs} | "
+            f"Train loss: {avg_train_loss:.5f}, acc: {avg_train_acc:.2f}% | "
+            f"Test loss: {avg_test_loss:.5f}, acc: {avg_test_acc:.2f}%"
+        )
 
-        # --- Uložení nejlepšího modelu ---
         if avg_test_acc > best_test_acc:
             best_test_acc = avg_test_acc
-            torch.save(model.state_dict(), "best_model.pth")
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            torch.save(model.state_dict(), save_path)
 
-def rozpoznat(t, img):
-    num_classes = 10
-    classes = ["A01", "AZ", "BinarniCtverce", "BrailovoPismo", "Mobil", "Morse", "PosunkovaAbeceda", "Semafor", "VelkyPolskyKriz", "Zlomky"]
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+def trenovani_vse():
+    os.makedirs("modely", exist_ok=True)
 
-    # Definice stejného modelu
-    model = nn.Sequential(
-        nn.Conv2d(1, 16, 3, padding=1),
-        nn.BatchNorm2d(16),
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-        nn.Conv2d(16, 32, 3, padding=1),
-        nn.BatchNorm2d(32),
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-        nn.AdaptiveAvgPool2d((8, 8)),
-        nn.Flatten(),
-        nn.Linear(32 * 8 * 8, 128),
-        nn.ReLU(),
-        nn.Dropout(0.3),
-        nn.Linear(128, num_classes)
-    ).to(device)
+    # ───── HLAVNÍ MODEL – ROZPOZNÁNÍ ŠIFRY ─────
+    train_dataset = CustomDataset("Dataset/train", img_size=(128, 512))
+    test_dataset  = CustomDataset("Dataset/test",  img_size=(128, 512))
 
-    # Načtení uloženého modelu
-    try:
-        num_classes = 10
-        classes = ["A01", "AZ", "BinarniCtverce", "BrailovoPismo", "Mobil", "Morse", "PosunkovaAbeceda", "Semafor", "VelkyPolskyKriz", "Zlomky"]
+    print("Trénuji hlavní model na Dataset...")
+    """train_model(
+        train_dataset,
+        test_dataset,
+        save_path=os.path.join("modely", "best_model.pth"),
+        n_epochs=20,
+        batch_size=16,
+        learning_rate=3e-4
+    )"""
 
-        model.load_state_dict(torch.load("best_model.pth", map_location=device))
-    except FileNotFoundError:
-        t.config(text="Model nebyl nalezen. Natrénujte ho nejprve.")
+    # ───── MODELY PRO JEDNOTLIVÉ ŠIFRY (PÍSMENA) ─────
+    letters_dir = "Dataset_letters"
+
+    for sifra_typ in sorted(os.listdir(letters_dir)):
+        sifra_path = os.path.join(letters_dir, sifra_typ)
+        if not os.path.isdir(sifra_path):
+            continue
+
+        print(f"Trénuji model pro šifru: {sifra_typ}")
+
+        train_dataset = CustomDataset(
+            os.path.join(sifra_path, "train"),
+            img_size=(80, 50)
+        )
+        test_dataset = CustomDataset(
+            os.path.join(sifra_path, "test"),
+            img_size=(80, 50)
+        )
+
+        model_save_path = os.path.join("modely", f"{sifra_typ}_model.pth")
+
+        train_model(
+            train_dataset,
+            test_dataset,
+            save_path=model_save_path,
+            n_epochs=20,
+            batch_size=8,
+            learning_rate=8e-4  # nižší LR, aby se písmena lépe naučila
+        )
+
+
+def rozpoznat(t, img, font_model_path=None):
+    """
+    Rozpozná typ šifry (A01, Morse, …) z celého obrázku
+    """
+    if img is None:
+        t.config(text="Nezvolen žádný obrázek")
         return
 
+    classes = [
+        "A01", "AZ", "BinarniCtverce", "BrailovoPismo",
+        "Mobil", "Morse", "PosunkovaAbeceda",
+        "Semafor", "VelkyPolskyKriz", "Zlomky"
+    ]
+
+    num_classes = len(classes)
+    model = create_model(num_classes)
+
+    model_path = font_model_path or os.path.join("modely", "best_model.pth")
+    if not os.path.exists(model_path):
+        t.config(text="Model nebyl nalezen. Nejprve ho natrénujte.")
+        return
+
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
-    # Transformace obrázku
     transform = transforms.Compose([
         transforms.Grayscale(),
         transforms.Resize((128, 512)),
         transforms.ToTensor()
     ])
 
-    img_tensor = transform(img).unsqueeze(0).to(device)  # přidání batch dimenze
+    img_tensor = transform(img).unsqueeze(0).to(device)
 
-    # Predikce
     with torch.inference_mode():
         y_pred = model(img_tensor)
         pred_class = torch.argmax(y_pred, dim=1).item()
-        pred_label = classes[pred_class]
 
-    # Aktualizace widgetu
-    t.config(text=f"Šifra rozpoznána: {pred_label}")
+    t.config(text=f"Šifra rozpoznána: {classes[pred_class]}")
 
+# ────────────── NORMALIZACE ZNAKU ──────────────
+def normalize_znak(znak_img):
+    znak_img = znak_img.convert("L")
 
-from PIL import Image
-import os
+    bbox = znak_img.getbbox()
+    if bbox:
+        znak_img = znak_img.crop(bbox)
 
+    w, h = znak_img.size
+    tw, th = LETTER_SIZE
 
+    scale = min((tw - 4) / w, (th - 4) / h)
+    new_w, new_h = int(w * scale), int(h * scale)
+
+    znak_img = znak_img.resize((new_w, new_h), Image.BILINEAR)
+
+    canvas = Image.new("L", LETTER_SIZE, 255)
+    x = (tw - new_w) // 2
+    y = (th - new_h) // 2
+    canvas.paste(znak_img, (x, y))
+
+    return canvas
+
+# ────────────── EXTRAKCE ZNAKŮ ──────────────
 def extrahovat_znaky(img, sifra_typ, vizualizace=True, padding=2, min_znak_sirka=5):
     img_gray = img.convert("L")
-    img_bw = img_gray.point(lambda x: 0 if x < 128 else 255, "1")
+    img_bw = img_gray
     width, height = img_bw.size
 
     řádky = []
     in_line = False
     start_y = 0
+
     for y in range(height):
         row = [img_bw.getpixel((x, y)) for x in range(width)]
-        if any(pix == 0 for pix in row) and not in_line:
+        if any(p < 200 for p in row) and not in_line:
             in_line = True
             start_y = max(0, y - padding)
-        elif all(pix == 255 for pix in row) and in_line:
-            end_y = min(height, y + padding)
-            řádky.append((start_y, end_y))
+        elif all(p > 200 for p in row) and in_line:
+            řádky.append((start_y, min(height, y + padding)))
             in_line = False
+
     if in_line:
         řádky.append((start_y, height))
 
     znaky = []
-    for idx, (y1, y2) in enumerate(řádky):
+    for y1, y2 in řádky:
         x = 0
         while x < width:
-            while x < width and all(img_bw.getpixel((x, y)) == 255 for y in range(y1, y2)):
+            while x < width and all(img_bw.getpixel((x, y)) > 200 for y in range(y1, y2)):
                 x += 1
             if x >= width:
                 break
@@ -235,53 +283,70 @@ def extrahovat_znaky(img, sifra_typ, vizualizace=True, padding=2, min_znak_sirka
             end_x = x
             while end_x < width:
                 col = [img_bw.getpixel((end_x, y)) for y in range(y1, y2)]
-                if all(p == 255 for p in col):
-                    # pokud je mezera menší než min_znak_sirka, pokračujeme v bloku
+                if all(p > 200 for p in col):
                     gap = 0
-                    while end_x + gap < width and all(img_bw.getpixel((end_x + gap, y)) == 255 for y in range(y1, y2)):
+                    while end_x + gap < width and all(
+                        img_bw.getpixel((end_x + gap, y)) > 200 for y in range(y1, y2)
+                    ):
                         gap += 1
-                    if gap < min_znak_sirka:
-                        end_x += gap
-                    else:
+                    if gap >= min_znak_sirka:
                         break
+                    end_x += gap
                 end_x += 1
 
-            end_x = min(width, end_x + padding)
-            znak_img = img_bw.crop((start_x, y1, end_x, y2))
-            znaky.append(znak_img)
+            znak = img_bw.crop((start_x, y1, min(width, end_x + padding), y2))
+            znaky.append(znak)
             x = end_x
 
     if vizualizace:
-        folder = "znaky_vizualizace"
-        os.makedirs(folder, exist_ok=True)
+        os.makedirs("znaky_vizualizace", exist_ok=True)
         for i, z in enumerate(znaky):
-            z.save(os.path.join(folder, f"{sifra_typ}_{i}.png"))
+            z.save(f"znaky_vizualizace/{sifra_typ}_{i}.png")
 
     return znaky
 
+# ────────────── ŘEŠENÍ ──────────────
 def vyresit(t, img=None, rozpoznano_label=None):
     if img is None:
         t.config(text="Nezvolen žádný obrázek")
         return
 
     if rozpoznano_label is None or "Šifra rozpoznána:" not in rozpoznano_label.cget("text"):
-        t.config(text="Šifra nebyla ještě rozpoznána. Nejprve klikněte na 'Rozpoznat šifru'")
+        t.config(text="Nejprve rozpoznej šifru")
         return
 
     sifra_typ = rozpoznano_label.cget("text").replace("Šifra rozpoznána: ", "")
+    znaky = extrahovat_znaky(img, sifra_typ)
 
-    sifra_znaky = extrahovat_znaky(img, sifra_typ)
+    model_path = f"modely/{sifra_typ}_model.pth"
+    dataset_path = f"Dataset_letters/{sifra_typ}/train"
 
-    # 4. Dekódování šifry
-    vysledek_text = None
-    # TODO: zavolat odpovídající dekodér podle sifra_typ
-    # např. pokud sifra_typ == "Morse": vysledek_text = dekoder_morse(sifra_znaky)
+    if not os.path.exists(model_path) or not os.path.exists(dataset_path):
+        t.config(text="Chybí model nebo dataset")
+        return
 
-    if vysledek_text is not None:
-        t.config(text=f"Šifra vyřešena:\n{vysledek_text}")
-    else:
-        t.config(text="Dekódování šifry není implementováno")
+    dataset = CustomDataset(dataset_path)
+    classes = dataset.classes
 
+    model = create_model(len(classes))
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+
+    transform = transforms.Compose([
+        transforms.Grayscale(),
+        transforms.Resize(TORCH_SIZE),
+        transforms.ToTensor()
+    ])
+
+    vysledek = ""
+    with torch.inference_mode():
+        for znak in znaky:
+            znak = normalize_znak(znak)
+            tensor = transform(znak).unsqueeze(0).to(device)
+            pred = model(tensor)
+            vysledek += classes[torch.argmax(pred, 1).item()]
+
+    t.config(text=f"Šifra vyřešena:\n{vysledek}")
 
 def vstup():
     """Vybere vstupní soubor a vrátí PIL.Image objekt"""
@@ -292,6 +357,6 @@ def vstup():
     return None
 
 if __name__ == "__main__":
-    # Spustí se jen při přímém spuštění reseni.py
-    print("Spuštěno přímo. Spouštím trénování modelu...")
-    trenovani_vlastni_dataset()
+    # Spustí se jen při přímém spuštění - za účelem trénování
+    print("Spouštím trénování všech modelů...")
+    trenovani_vse()
