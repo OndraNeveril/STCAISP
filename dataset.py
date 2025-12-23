@@ -23,23 +23,13 @@ def random_paragraph(sentence_count, min_words, max_words):
 # ────────────── FUNKCE PRO MEZEROVÁNÍ TEXTU ──────────────
 
 def spaced_text(text, font_name):
-    # dvě mezery pro braille / binární fonty
-    if ("brail" in font_name.lower()
-        or "binar" in font_name.lower()):
-        sep = "  "
-    elif ("semafor" in font_name.lower()
-          or "posunk" in font_name.lower()):
-        sep = " "  # semafor/posunky chtějí stále jednu mezeru?
-    else:
-        sep = " "
-
+    sep = "  "
     output = ""
     for ch in text:
         if ch == " ":
             output += ch
         else:
             output += ch + sep
-
     return output.rstrip()
 
 

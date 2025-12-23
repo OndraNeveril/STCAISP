@@ -145,13 +145,6 @@ def trenovani_vlastni_dataset():
             torch.save(model.state_dict(), "best_model.pth")
 
 def rozpoznat(t, img):
-    """Rozpoznání obrázku na základě uloženého natrénovaného modelu.
-    Parametry:
-        t   : Tkinter widget (Label) pro zobrazení výsledku
-        img : PIL.Image objekt (načtený obrázek)
-    """
-
-    # Nastavení
     num_classes = 10
     classes = ["A01", "AZ", "BinarniCtverce", "BrailovoPismo", "Mobil", "Morse", "PosunkovaAbeceda", "Semafor", "VelkyPolskyKriz", "Zlomky"]
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -205,44 +198,66 @@ def rozpoznat(t, img):
     t.config(text=f"Šifra rozpoznána: {pred_label}")
 
 
+from PIL import Image
+import os
 
 
-
-
-
-def extrahovat_znaky(img, sifra_typ):
-    typ = sifra_typ.lower()
-
-    if typ in ["brailovopismo", "binarnictverce", "semafor", "posunkovaabeceda"]:
-        znak_sirka = 40
-        mezera_sirka = 2
-    elif typ == "morse":
-        znak_sirka = 30
-        mezera_sirka = 1
-    else:
-        znak_sirka = 20
-        mezera_sirka = 1
-
+def extrahovat_znaky(img, sifra_typ, vizualizace=True, padding=2, min_znak_sirka=5):
     img_gray = img.convert("L")
     img_bw = img_gray.point(lambda x: 0 if x < 128 else 255, "1")
     width, height = img_bw.size
 
+    řádky = []
+    in_line = False
+    start_y = 0
+    for y in range(height):
+        row = [img_bw.getpixel((x, y)) for x in range(width)]
+        if any(pix == 0 for pix in row) and not in_line:
+            in_line = True
+            start_y = max(0, y - padding)
+        elif all(pix == 255 for pix in row) and in_line:
+            end_y = min(height, y + padding)
+            řádky.append((start_y, end_y))
+            in_line = False
+    if in_line:
+        řádky.append((start_y, height))
+
     znaky = []
-    x = 0
-    while x < width:
-        col = [img_bw.getpixel((x, y)) for y in range(height)]
-        if all(pix == 255 for pix in col):
-            x += 1
-            continue
-        end_x = x + znak_sirka
-        if end_x > width:
-            end_x = width
+    for idx, (y1, y2) in enumerate(řádky):
+        x = 0
+        while x < width:
+            while x < width and all(img_bw.getpixel((x, y)) == 255 for y in range(y1, y2)):
+                x += 1
+            if x >= width:
+                break
 
-        znak_img = img_bw.crop((x, 0, end_x, height))
-        znaky.append(znak_img)
-        x = end_x + mezera_sirka
+            start_x = max(0, x - padding)
+            end_x = x
+            while end_x < width:
+                col = [img_bw.getpixel((end_x, y)) for y in range(y1, y2)]
+                if all(p == 255 for p in col):
+                    # pokud je mezera menší než min_znak_sirka, pokračujeme v bloku
+                    gap = 0
+                    while end_x + gap < width and all(img_bw.getpixel((end_x + gap, y)) == 255 for y in range(y1, y2)):
+                        gap += 1
+                    if gap < min_znak_sirka:
+                        end_x += gap
+                    else:
+                        break
+                end_x += 1
+
+            end_x = min(width, end_x + padding)
+            znak_img = img_bw.crop((start_x, y1, end_x, y2))
+            znaky.append(znak_img)
+            x = end_x
+
+    if vizualizace:
+        folder = "znaky_vizualizace"
+        os.makedirs(folder, exist_ok=True)
+        for i, z in enumerate(znaky):
+            z.save(os.path.join(folder, f"{sifra_typ}_{i}.png"))
+
     return znaky
-
 
 def vyresit(t, img=None, rozpoznano_label=None):
     if img is None:
