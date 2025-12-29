@@ -4,7 +4,7 @@ Cipher decoder
 Tagy: Šifry; Python; Strojové učení; Rozpoznávání obrazu; Překlad textu
 
 Odkaz na repositář: https://github.com/OndraNeveril/STCAISP
-Odkaz na výsledek: decoder.exe
+Odkaz na výsledek: decoder.py
 
 ---
 
@@ -19,15 +19,13 @@ Reflexe: STC_absolventka_reflexe.pdf
 
 Soubory:
 
-  - dataset.py - program, určený k vytváření datasetů, generuje náhodná anglická slova, které následně překládá do všech vybraných fontů a dále jednotlivých písmen přčeložených do všech fontů. Vzhledem k tomu, že datasety lze vytvořit pomocí tohoto progarmu a jednotlivých fontů, nejsou součástí repozitáře.
+  - dataset.py - program, určený k vytváření datasetů, generuje náhodná anglická slova, které následně překládá do všech vybraných fontů a dále jednotlivých písmen přčeložených do všech fontů.
 
   - Dataset - složka obsahuje dataset jednotlivých typů šifer (obrázku se zašifrovaným slovem přiřazeným ke správné tříde - typu šifry), vygenerované pomocí programu dataset.py, určené k natrénování a testování modelu na řešení šifer.
 
   - Dataset_letters - složka obsahující datasety pro každý typ šifry, sloužící k natrénování rozpoznávání jednotlivých písmen, rovnež generováno programem dataset.py
 
   - decoder.py - Zdrojový kód aplikace, definuje GUI a používá funkce z reseni.py za účelem vytvoření nebo dekódování šifry
-
-  - decoder.exe - Samotná aplikace, uživatel načte obrázek a nechá si vyřešit šifru nebo zadá text a nechá si šifru vytvořit
 
   - fonty - obsahují skautské fonty,  které se používají k zašifrování textů, jedná se o 10 vybraných fontů, tak, aby byl překlad jednoznačný. Vyvužívají se pouze v programu dataset.py (více v sekci o něm).
 

@@ -10,6 +10,7 @@ root = Tk()
 root.title("Decoder")
 root.configure(background="white")
 root.attributes("-fullscreen", False)
+root.geometry("600x800")
 root.grid_rowconfigure(0, weight=1)
 root.grid_columnconfigure(0, weight=1)
 
@@ -89,22 +90,22 @@ def potvrdit():
     vybrany_font = vyber.get()
 
 # --- Startovací okno ---
-Button(frame_start, text="Zašifrovat text", font=("Font", 20), command=lambda: show_frame(frame_encode)).pack(pady=20)
-Button(frame_start, text="Vyřešit šifru", font=("Font", 20), command=lambda: show_frame(frame_decode)).pack(pady=20)
+Button(frame_start, text="Zašifrovat text", font=("Font", 20), height=1, width=25, command=lambda: show_frame(frame_encode)).pack(pady=20)
+Button(frame_start, text="Vyřešit šifru", font=("Font", 20), height=1, width=25, command=lambda: show_frame(frame_decode)).pack(pady=20)
 
 # --- Okno pro vyřešení ---
-Button(frame_decode, text="Vybrat vstupní soubor", font=("Font", 20), height=1, width=20, command=vyber_soubor).pack(pady=20)
+Button(frame_decode, text="Vybrat vstupní soubor", font=("Font", 20), height=1, width=25, command=vyber_soubor).pack(pady=20)
 
 # Rozpoznání šifry
 t1 = Label(frame_decode, text="Šifra nerozpoznána", background="white", font=("Font", 20))
 t1.pack()
-Button(frame_decode, text="Rozpoznat šifru", font=("Font", 20), height=1, width=20, command=lambda: reseni.rozpoznat(t1, img) if img else t1.config(text="Nezvolen žádný obrázek")).pack(pady=20)
+Button(frame_decode, text="Rozpoznat šifru", font=("Font", 20), height=1, width=25, command=lambda: reseni.rozpoznat(t1, img) if img else t1.config(text="Nezvolen žádný obrázek")).pack(pady=20)
 
 # Vyřešení šifry
 t2 = Label(frame_decode, text="Šifra nevyřešena", background="white", font=("Font", 20))
 t2.pack()
-Button(frame_decode, text="Vyřešit šifru", font=("Font", 20), height=1, width=20, command=lambda: reseni.vyresit(t2, img=img, rozpoznano_label=t1)).pack(pady=20)
-Button(frame_decode, text="Zpět na původní obrazovku", font=("Font", 20), command=lambda: show_frame(frame_start)).pack(pady=20)
+Button(frame_decode, text="Vyřešit šifru", font=("Font", 20), height=1, width=25, command=lambda: reseni.vyresit(t2, img=img, rozpoznano_label=t1)).pack(pady=20)
+Button(frame_decode, text="Zpět na původní obrazovku", font=("Font", 20), height=1, width=25, command=lambda: show_frame(frame_start)).pack(pady=20)
 
 # --- Okno pro zašifrování šifry ---
 Label(frame_encode, text="Zadejte text pro zašifrování", background="white", font=("Font", 20)).pack(pady=20)
@@ -125,9 +126,9 @@ nabidka.pack(pady=20)
 t3 = Label(frame_encode, text="Šifra nevybrána!", background="white", font=("Font", 20), fg="red")
 
 #Zašifrování
-Button(frame_encode, text="Vybrat", font=("Font", 20), command=potvrdit).pack(pady=20)
-Button(frame_encode, text ="Zašifrovat text", font=("Font", 20), command = lambda:Take_input(vybrany_font)).pack(pady=20)
-Button(frame_encode, text="Zpět na původní obrazovku", font=("Font", 20), command=lambda: show_frame(frame_start)).pack(pady=20)
+Button(frame_encode, text="Vybrat", font=("Font", 20), height=1, width=25, command=potvrdit).pack(pady=20)
+Button(frame_encode, text ="Zašifrovat text", font=("Font", 20), height=1, width=25, command = lambda:Take_input(vybrany_font)).pack(pady=20)
+Button(frame_encode, text="Zpět na původní obrazovku", font=("Font", 20), height=1, width=25, command=lambda: show_frame(frame_start)).pack(pady=20)
 
 show_frame(frame_start)
 root.mainloop()
