@@ -11,13 +11,10 @@ from tkinter import Label
 from tkinter.filedialog import askopenfilename
 from PIL import Image, ImageTk
 
-# ────────────── KONSTANTY ──────────────
 LETTER_SIZE = (80, 50)   # (W, H) – PIL
 TORCH_SIZE  = (50, 80)   # (H, W) – torchvision
-
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ────────────── UTIL ──────────────
 def timeSince(since):
     now = time.time()
     s = now - since
@@ -30,7 +27,7 @@ def accuracy_fn(y_true, y_pred):
     correct = torch.eq(y_true, y_pred_class).sum().item()
     return (correct / len(y_pred)) * 100
 
-# ────────────── DATASET ──────────────
+# --- DATASET ---
 class CustomDataset(Dataset):
     def __init__(self, root_folder, img_size=TORCH_SIZE):
         self.images = []
@@ -62,7 +59,7 @@ class CustomDataset(Dataset):
         img = self.transform(img)
         return img, self.labels[idx]
 
-# ────────────── MODEL ──────────────
+# --- trénování modelů ---
 def create_model(num_classes):
     return nn.Sequential(
         nn.Conv2d(1, 16, 3, padding=1),
@@ -141,7 +138,7 @@ def train_model(train_dataset, test_dataset, save_path, n_epochs=20, batch_size=
 def trenovani_vse():
     os.makedirs("modely", exist_ok=True)
 
-    # ───── HLAVNÍ MODEL – ROZPOZNÁNÍ ŠIFRY ─────
+    # hlavní model - rozpoznání šifry
     train_dataset = CustomDataset("Dataset/train", img_size=(128, 512))
     test_dataset  = CustomDataset("Dataset/test",  img_size=(128, 512))
 
@@ -155,7 +152,7 @@ def trenovani_vse():
         learning_rate=3e-4
     )"""
 
-    # ───── MODELY PRO JEDNOTLIVÉ ŠIFRY (PÍSMENA) ─────
+    # modely pro jednotlivé šifry
     letters_dir = "Dataset_letters"
 
     for sifra_typ in sorted(os.listdir(letters_dir)):
@@ -182,14 +179,11 @@ def trenovani_vse():
             save_path=model_save_path,
             n_epochs=20,
             batch_size=8,
-            learning_rate=8e-4  # nižší LR, aby se písmena lépe naučila
+            learning_rate=8e-4
         )
 
-
+# --- vyřešení - typ šifry ---
 def rozpoznat(t, img, font_model_path=None):
-    """
-    Rozpozná typ šifry (A01, Morse, …) z celého obrázku
-    """
     if img is None:
         t.config(text="Nezvolen žádný obrázek")
         return
@@ -225,7 +219,7 @@ def rozpoznat(t, img, font_model_path=None):
 
     t.config(text=f"Šifra rozpoznána: {classes[pred_class]}")
 
-# ────────────── NORMALIZACE ZNAKU ──────────────
+# --- Rozpoznání znaků ---
 def normalize_znak(znak_img):
     znak_img = znak_img.convert("L")
 
@@ -248,45 +242,85 @@ def normalize_znak(znak_img):
 
     return canvas
 
-# ────────────── EXTRAKCE ZNAKŮ ──────────────
-def extrahovat_znaky(img, sifra_typ, vizualizace=True, padding=2, min_znak_sirka=5):
+def extrahovat_znaky(img, sifra_typ):
     img_gray = img.convert("L")
-    img_bw = img_gray
-    width, height = img_bw.size
-
-    řádky = []
-    in_line = False
-    start_y = 0
-
-    for y in range(height):
-        row = [img_bw.getpixel((x, y)) for x in range(width)]
-        if any(p < 200 for p in row) and not in_line:
-            in_line = True
-            start_y = max(0, y - padding)
-        elif all(p > 200 for p in row) and in_line:
-            řádky.append((start_y, min(height, y + padding)))
-            in_line = False
-
-    if in_line:
-        řádky.append((start_y, height))
-
+    width, height = img_gray.size
     znaky = []
-    for y1, y2 in řádky:
+    if sifra_typ in ("BrailovoPismo", "BinarniCtverce"):
+        bw = img_gray.point(lambda x: 0 if x < 200 else 255)
+
+        bbox = bw.getbbox()
+        if not bbox:
+            return []
+
+        x1, y1, x2, y2 = bbox
+        text_width = x2 - x1
+        mezery = []
+        x = x1
+        MIN_MEZERA = 6
+
+        while x < x2:
+            col = [bw.getpixel((x, y)) for y in range(y1, y2)]
+            if all(p == 255 for p in col):
+                start = x
+                while x < x2 and all(
+                    bw.getpixel((x, y)) == 255 for y in range(y1, y2)
+                ):
+                    x += 1
+                if x - start >= MIN_MEZERA:
+                    mezery.append((start, x))
+            else:
+                x += 1
+        rezy = [x1]
+
+        for m1, m2 in mezery:
+            rezy.append((m1 + m2) // 2)
+        rezy.append(x2)
+
+        for i in range(len(rezy) - 1):
+            sx = rezy[i]
+            ex = rezy[i + 1]
+            znak = img_gray.crop((sx, y1, ex, y2))
+
+            # --- filtr prázdných / nulových znaků ---
+            if znak.size[0] < 5:
+                continue
+
+            pixels = znak.load()
+            has_black = False
+            for xx in range(znak.size[0]):
+                for yy in range(znak.size[1]):
+                    if pixels[xx, yy] < 200:
+                        has_black = True
+                        break
+                if has_black:
+                    break
+
+            if not has_black:
+                continue
+
+            znaky.append(znak)
+
+    else:
+        padding = 2
+        min_znak_sirka = 5
+
         x = 0
         while x < width:
-            while x < width and all(img_bw.getpixel((x, y)) > 200 for y in range(y1, y2)):
+            while x < width and all(img_gray.getpixel((x, y)) > 200 for y in range(height)):
                 x += 1
             if x >= width:
                 break
 
             start_x = max(0, x - padding)
             end_x = x
+
             while end_x < width:
-                col = [img_bw.getpixel((end_x, y)) for y in range(y1, y2)]
+                col = [img_gray.getpixel((end_x, y)) for y in range(height)]
                 if all(p > 200 for p in col):
                     gap = 0
                     while end_x + gap < width and all(
-                        img_bw.getpixel((end_x + gap, y)) > 200 for y in range(y1, y2)
+                        img_gray.getpixel((end_x + gap, y)) > 200 for y in range(height)
                     ):
                         gap += 1
                     if gap >= min_znak_sirka:
@@ -294,18 +328,12 @@ def extrahovat_znaky(img, sifra_typ, vizualizace=True, padding=2, min_znak_sirka
                     end_x += gap
                 end_x += 1
 
-            znak = img_bw.crop((start_x, y1, min(width, end_x + padding), y2))
+            znak = img_gray.crop((start_x, 0, min(width, end_x + padding), height))
             znaky.append(znak)
             x = end_x
-
-    if vizualizace:
-        os.makedirs("znaky_vizualizace", exist_ok=True)
-        for i, z in enumerate(znaky):
-            z.save(f"znaky_vizualizace/{sifra_typ}_{i}.png")
-
     return znaky
 
-# ────────────── ŘEŠENÍ ──────────────
+# --- řešení šifry ---
 def vyresit(t, img=None, rozpoznano_label=None):
     if img is None:
         t.config(text="Nezvolen žádný obrázek")

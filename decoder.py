@@ -24,7 +24,7 @@ for frame in (frame_start, frame_decode, frame_encode):
 def show_frame(frame):
     frame.tkraise()
 
-#Výběr souboru
+# Výběr souboru
 def vyber_soubor():
     global img, img_label
     img = reseni.vstup()
@@ -51,7 +51,7 @@ def spaced_text(text, font_name):
             output += ch + sep
     return output.rstrip()
 
-# --- Zašifrování textu ---
+# Zašifrování textu
 def Take_input(font):
     if font is None:
         t3.config(text="Šifra nevybrána!", background="white", font=("Font", 20), fg="red")
@@ -82,7 +82,7 @@ def Take_input(font):
         inputtxt.delete("1.0", "end")
         vyber.set("Vyber druh šifry")
 
-#Výběr šifry
+# Výběr šifry
 vybrany_font = None
 def potvrdit():
     global vybrany_font

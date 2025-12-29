@@ -1,9 +1,7 @@
-Specifikace.docx
-instrukce*
 dataset
 venv
 __pycache__/
 .idea
 *.png
-*.pth
 *.jpg
+*.pdf

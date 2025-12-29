@@ -31,32 +31,26 @@ def spaced_text(text, font_name):
 def save_image(text, font_path, font_size, save_path, base_img_size=(100, 50), mode="text"):
     font = ImageFont.truetype(font_path, font_size)
 
-    # Zjistíme velikost textu
     dummy_img = Image.new("RGB", (1, 1))
     draw = ImageDraw.Draw(dummy_img)
     bbox = draw.textbbox((0, 0), text, font=font)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
-
-    margin = 10  # bezpečný okraj, aby text nevystupoval z obrázku
+    margin = 10
 
     if mode == "letter":
-        # Obrázek je alespoň základní velikosti
         img_width = max(base_img_size[0], text_width + 2*margin)
         img_height = max(base_img_size[1], text_height + 2*margin)
 
-        # Mírná náhodná variace velikosti obrázku
         width_variation = randint(0, 10)
         height_variation = randint(0, 5)
         img_size = (img_width + width_variation, img_height + height_variation)
 
-        # Náhodný posun textu uvnitř obrázku s marginem
         max_x_offset = img_size[0] - text_width - margin
         max_y_offset = img_size[1] - text_height - margin
         x = randint(margin, max_x_offset)
         y = randint(margin, max_y_offset)
     else:
-        # Dlouhé texty: vlevo a vertikálně na střed
         img_size = base_img_size
         x = 0
         y = (img_size[1] - text_height) // 2

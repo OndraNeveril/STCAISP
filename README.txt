@@ -8,13 +8,14 @@ Odkaz na výsledek: decoder.exe
 
 ---
 
-Anotace projektu: Tady popiš svůj projekt, co bylo jeho cílem a čeho jsi dosáhl. Může být klidně abstract z paperu. Popis nemusí být dlouhý, vše stačí v jednom odstavci.
+Anotace projektu: 
+Cílem tohoto projektu bylo vytvoření nástroje, jež bude schopen dekódovat šifry vložené uživatelem a také je vytvářet z uživatelem vloženého textu. Aplikace funguje na bázi strojového učení, konkrétně rozpoznávání obrazu neuronovou sítí za účelem rozpoznání jak typu šifry, tak jednotlivých znaků ze kterých se šifra skládá.
 
 ---
 
-Paper: paper.pdf
+Paper: STC_absolventka_paper.pdf
 
-Reflexe: reflexe.pdf
+Reflexe: STC_absolventka_reflexe.pdf
 
 Soubory:
 
